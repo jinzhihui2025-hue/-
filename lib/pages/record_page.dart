@@ -28,7 +28,10 @@ class _LineEdit {
     model = l.model;
     mode = payModeFromName(l.mode);
     if (mode == PayMode.perSecond) {
-      durationText = l.unitSeconds?.round().toString() ?? '';
+      // 回显总耗时 = 每件秒数 × 件数
+      final perPiece = l.unitSeconds ?? 0;
+      final cnt = l.quantity > 0 ? l.quantity : 1;
+      durationText = (perPiece * cnt).round().toString();
     } else if (mode == PayMode.perPiece) {
       priceText = l.unitPrice?.toString() ?? '';
     } else if (mode == PayMode.perHour) {
@@ -101,19 +104,21 @@ class _RecordPageState extends State<RecordPage> {
 
   WorkOrderLine? _toLine(_LineEdit e) {
     final qty = double.tryParse(e.qtyText) ?? 0;
-    if (e.model.trim().isEmpty || qty <= 0) return null;
+    if (e.model.trim().isEmpty) return null;
     if (e.mode == PayMode.perSecond) {
-      final sec = parseDurationSeconds(e.durationText);
-      if (sec == null || sec <= 0) return null;
+      // 总耗时（如 927 秒）÷ 件数（如 3 件）= 每件耗时 309 秒
+      final totalSec = parseDurationSeconds(e.durationText);
+      if (totalSec == null || totalSec <= 0 || qty <= 0) return null;
+      final perPiece = totalSec / qty;
       return WorkOrderLine(
           model: e.model.trim(),
           mode: payModeName(e.mode),
-          unitSeconds: sec.toDouble(),
+          unitSeconds: perPiece,
           quantity: qty,
-          lineTotal: _settings.ratePerSecond * sec * qty);
+          lineTotal: _settings.ratePerSecond * totalSec);
     } else if (e.mode == PayMode.perPiece) {
       final price = double.tryParse(e.priceText) ?? 0;
-      if (price <= 0) return null;
+      if (price <= 0 || qty <= 0) return null;
       return WorkOrderLine(
           model: e.model.trim(),
           mode: payModeName(e.mode),
@@ -358,7 +363,7 @@ class _RecordPageState extends State<RecordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('班次（点击直接切换）',
+                const Text('班次 / 补助（点击选择）',
                     style: TextStyle(fontSize: 13, color: kIosSecondary)),
                 const SizedBox(height: 8),
                 if (_shifts.isEmpty)
@@ -368,39 +373,21 @@ class _RecordPageState extends State<RecordPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _shifts
-                        .map((s) => _chip(
-                              s.name,
-                              _shift?.id == s.id,
-                              () => _selectShift(s),
-                            ))
-                        .toList(),
+                    children: [
+                      ..._shifts.map((s) => _chip(
+                            s.name,
+                            _shift?.id == s.id,
+                            () => _selectShift(s),
+                          )),
+                      _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
+                    ],
                   ),
-              ],
-            ),
-          ),
-          const IosDivider(),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('补助比例（%）· 自己填，每个工人不一样',
-                    style: TextStyle(fontSize: 13, color: kIosSecondary)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
-                  ],
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 CupertinoTextField(
                   key: const ValueKey('subsidy'),
                   controller: _subsidyCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  placeholder: '如 20 = 每件工资加20%，不填为0',
+                  placeholder: '补助比例（%）· 自己填，如 20 = 每件工资加20%',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   onChanged: (v) => setState(() => _subsidy = double.tryParse(v) ?? 0),
                 ),
@@ -483,7 +470,7 @@ class _RecordPageState extends State<RecordPage> {
                   child: CupertinoTextField(
                     key: ValueKey('dur_$index'),
                     keyboardType: TextInputType.number,
-                    placeholder: '单件耗时 秒（如1080）或 分:秒',
+                    placeholder: '总耗时：秒 或 分:秒（如927或15:27）',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.durationText = v),
                   ),
@@ -494,7 +481,7 @@ class _RecordPageState extends State<RecordPage> {
                   child: CupertinoTextField(
                     key: ValueKey('qty_$index'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    placeholder: '总件数',
+                    placeholder: '件数',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.qtyText = v),
                   ),
@@ -505,14 +492,14 @@ class _RecordPageState extends State<RecordPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                    '单件 ${formatSeconds(durSec)}（${durSec}秒）· 单件工价 ¥${(_settings.ratePerSecond * durSec).toStringAsFixed(2)}',
+                    '总耗时 ${formatSeconds(durSec)}（${durSec}秒）· 每件工价 ¥${(_settings.ratePerSecond * durSec / (double.tryParse(e.qtyText) ?? 1)).toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 12, color: kIosBlue)),
               ),
               if (double.tryParse(e.qtyText) != null && (double.tryParse(e.qtyText) ?? 0) > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
-                    '共 ${e.qtyText} 件 = ${((double.tryParse(e.qtyText) ?? 0) * durSec).round()} 秒',
+                    '${e.qtyText} 件 = 每件 ${formatSeconds((durSec / (double.tryParse(e.qtyText) ?? 1)).round())}（${(durSec / (double.tryParse(e.qtyText) ?? 1)).round()}秒/件）',
                     style: const TextStyle(fontSize: 12, color: kIosSecondary)),
                 ),
             ],
