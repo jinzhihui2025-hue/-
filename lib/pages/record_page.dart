@@ -601,9 +601,12 @@ class _RecordPageState extends State<RecordPage> {
             ),
           ],
           const SizedBox(height: 8),
-          Text('本行小计  ￥${lineTotal.toStringAsFixed(2)}',
+          Text(
+              '本行小计（含补助${_subsidy.toStringAsFixed(0)}%） ￥${(lineTotal * (1 + _subsidy / 100)).toStringAsFixed(2)}',
               style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: kIosLabel)),
+                  fontSize: 14, fontWeight: FontWeight.w600, color: kIosLabel)),
+          Text('基础 ￥${lineTotal.toStringAsFixed(2)} + 补助${_subsidy.toStringAsFixed(0)}%',
+              style: const TextStyle(fontSize: 12, color: kIosSecondary)),
         ],
       ),
     );
@@ -626,6 +629,8 @@ class _RecordPageState extends State<RecordPage> {
                 children: [
                   Text('基础 ￥${p.base.toStringAsFixed(2)} × (1+补助${_subsidy.toStringAsFixed(0)}%) = ￥${p.total.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 12, color: kIosSecondary)),
+                  Text('补助${_subsidy.toStringAsFixed(0)}%已计入本单金额',
+                      style: const TextStyle(fontSize: 11, color: kIosGreen)),
                   Text('本单金额 ￥${p.total.toStringAsFixed(2)}',
                       style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.w600, color: kIosLabel)),
