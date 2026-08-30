@@ -20,6 +20,8 @@ class _LineEdit {
   String priceText = '';
   String hourlyText = '';
   String hoursText = '';
+  String dayRateText = '';
+  String daysText = '';
   String qtyText = '';
   _LineEdit();
   _LineEdit.fromLine(WorkOrderLine l) {
@@ -29,9 +31,12 @@ class _LineEdit {
       durationText = l.unitSeconds?.round().toString() ?? '';
     } else if (mode == PayMode.perPiece) {
       priceText = l.unitPrice?.toString() ?? '';
-    } else {
+    } else if (mode == PayMode.perHour) {
       hourlyText = l.hourlyRate?.toString() ?? '';
       hoursText = l.hours?.toString() ?? '';
+    } else {
+      dayRateText = l.dayRate?.toString() ?? '';
+      daysText = l.days?.toString() ?? '';
     }
     qtyText = l.quantity.toString();
   }
@@ -40,6 +45,7 @@ class _LineEdit {
 class _RecordPageState extends State<RecordPage> {
   late DateTime _date;
   late TextEditingController _machineCtrl;
+  late TextEditingController _subsidyCtrl;
   List<String> _machines = [];
   List<ShiftRule> _shifts = [];
   ShiftRule? _shift;
@@ -55,12 +61,14 @@ class _RecordPageState extends State<RecordPage> {
     super.initState();
     _date = _isEdit ? DateTime.parse(widget.editOrder!.date) : DateTime.now();
     _machineCtrl = TextEditingController(text: widget.editOrder?.machine ?? '');
+    _subsidyCtrl = TextEditingController();
     _load();
   }
 
   @override
   void dispose() {
     _machineCtrl.dispose();
+    _subsidyCtrl.dispose();
     super.dispose();
   }
 
@@ -79,6 +87,7 @@ class _RecordPageState extends State<RecordPage> {
           if (s.id == widget.editOrder!.shiftRuleId) _shift = s;
         }
         _subsidy = widget.editOrder!.subsidy;
+        _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
         _lines
           ..clear()
           ..addAll((widget.editLines ?? []).map((l) => _LineEdit.fromLine(l)));
@@ -87,6 +96,7 @@ class _RecordPageState extends State<RecordPage> {
         if (_shift != null) {
           _subsidy = _lastSubsidy[_shift!.id] ?? _shift!.defaultSubsidy;
         }
+        _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
         if (_lines.isEmpty) _lines.add(_LineEdit());
       }
     });
@@ -113,7 +123,7 @@ class _RecordPageState extends State<RecordPage> {
           unitPrice: price,
           quantity: qty,
           lineTotal: price * qty);
-    } else {
+    } else if (e.mode == PayMode.perHour) {
       final rate = double.tryParse(e.hourlyText) ?? 0;
       final hours = double.tryParse(e.hoursText) ?? 0;
       if (rate <= 0 || hours <= 0) return null;
@@ -124,6 +134,17 @@ class _RecordPageState extends State<RecordPage> {
           hours: hours,
           quantity: 0,
           lineTotal: rate * hours);
+    } else {
+      final dayRate = double.tryParse(e.dayRateText) ?? 0;
+      final days = double.tryParse(e.daysText) ?? 0;
+      if (dayRate <= 0 || days <= 0) return null;
+      return WorkOrderLine(
+          model: e.model.trim(),
+          mode: payModeName(e.mode),
+          dayRate: dayRate,
+          days: days,
+          quantity: 0,
+          lineTotal: dayRate * days);
     }
   }
 
@@ -222,11 +243,12 @@ class _RecordPageState extends State<RecordPage> {
             setState(() {
               _shift = s;
               _subsidy = _lastSubsidy[s.id] ?? s.defaultSubsidy;
+              _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
             });
           },
           children: _shifts
               .map((s) => Center(
-                    child: Text('${s.name}  ×${s.multiplier}   默认补助${s.defaultSubsidy.toStringAsFixed(0)}元',
+                    child: Text('${s.name}（倍率×${s.multiplier}）默认补助${s.defaultSubsidy.toStringAsFixed(0)}元/班',
                         style: const TextStyle(fontSize: 16)),
                   ))
               .toList(),
@@ -339,7 +361,7 @@ class _RecordPageState extends State<RecordPage> {
             label: '班次',
             value: _shift == null
                 ? '请选择'
-                : '${_shift!.name}  ×${_shift!.multiplier}',
+                : '${_shift!.name}（倍率×${_shift!.multiplier}）',
             onTap: _pickShift,
           ),
           const IosDivider(),
@@ -348,11 +370,12 @@ class _RecordPageState extends State<RecordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('补助（元/班）',
+                const Text('补助（元/班，与倍率分开算）',
                     style: TextStyle(fontSize: 13, color: kIosSecondary)),
                 const SizedBox(height: 6),
                 CupertinoTextField(
                   key: const ValueKey('subsidy'),
+                  controller: _subsidyCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   placeholder: '每天可不同，自动记住上次',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -425,6 +448,7 @@ class _RecordPageState extends State<RecordPage> {
               PayMode.perSecond: const Text('按秒'),
               PayMode.perPiece: const Text('按件'),
               PayMode.perHour: const Text('按小时'),
+              PayMode.perDay: const Text('按天'),
             },
             onValueChanged: (m) => setState(() => e.mode = m ?? PayMode.perSecond),
           ),
@@ -454,12 +478,21 @@ class _RecordPageState extends State<RecordPage> {
                 ),
               ],
             ),
-            if (durSec != null)
+            if (durSec != null) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('= ${formatSeconds(durSec)}（${durSec}秒）',
+                child: Text(
+                    '单件 ${formatSeconds(durSec)}（${durSec}秒）· 单件工价 ¥${(_settings.ratePerSecond * durSec).toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 12, color: kIosBlue)),
               ),
+              if (double.tryParse(e.qtyText) != null && (double.tryParse(e.qtyText) ?? 0) > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '共 ${e.qtyText} 件 = ${((double.tryParse(e.qtyText) ?? 0) * durSec).round()} 秒',
+                    style: const TextStyle(fontSize: 12, color: kIosSecondary)),
+                ),
+            ],
           ] else if (e.mode == PayMode.perPiece) ...[
             Row(
               children: [
@@ -485,7 +518,7 @@ class _RecordPageState extends State<RecordPage> {
                 ),
               ],
             ),
-          ] else ...[
+          ] else if (e.mode == PayMode.perHour) ...[
             Row(
               children: [
                 Expanded(
@@ -505,6 +538,30 @@ class _RecordPageState extends State<RecordPage> {
                     placeholder: '小时数',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.hoursText = v),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: CupertinoTextField(
+                    key: ValueKey('dayrate_$index'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    placeholder: '日薪（元/天）',
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    onChanged: (v) => setState(() => e.dayRateText = v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CupertinoTextField(
+                    key: ValueKey('days_$index'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    placeholder: '天数',
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    onChanged: (v) => setState(() => e.daysText = v),
                   ),
                 ),
               ],

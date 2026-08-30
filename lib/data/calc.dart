@@ -39,6 +39,8 @@ double calcLineTotal(WorkOrderLine l, double ratePerSecond) {
       return (l.unitPrice ?? 0) * l.quantity;
     case PayMode.perHour:
       return (l.hourlyRate ?? 0) * (l.hours ?? 0);
+    case PayMode.perDay:
+      return (l.dayRate ?? 0) * (l.days ?? 0);
   }
 }
 

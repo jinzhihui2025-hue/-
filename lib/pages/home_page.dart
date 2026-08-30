@@ -168,8 +168,13 @@ class _HomePageState extends State<HomePage> {
   Widget _orderTile(_HomeData d, WorkOrder o, Map<int?, String> shiftName) {
     final ls = d.lines[o.id] ?? [];
     final linesDesc = ls.map((l) {
-      if (payModeFromName(l.mode) == PayMode.perSecond) {
+      final m = payModeFromName(l.mode);
+      if (m == PayMode.perSecond) {
         return '${l.model} ${l.quantity.toStringAsFixed(0)}件 (${formatSeconds(l.unitSeconds!.round())})';
+      } else if (m == PayMode.perHour) {
+        return '${l.model} ${l.hours?.toString() ?? ''}小时';
+      } else if (m == PayMode.perDay) {
+        return '${l.model} ${l.days?.toString() ?? ''}天';
       }
       return '${l.model} ${l.quantity.toStringAsFixed(0)}件';
     }).join('，');

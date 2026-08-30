@@ -155,9 +155,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                     children: [
                       ..._shifts.map((s) => CupertinoListTile(
-                            title: Text('${s.name}  ×${s.multiplier}',
+                            title: Text('${s.name}（倍率×${s.multiplier}）',
                                 style: const TextStyle(fontSize: 16)),
-                            subtitle: Text('默认补助 ${s.defaultSubsidy.toStringAsFixed(0)} 元/班（记单时可改）',
+                            subtitle: Text('默认补助 ${s.defaultSubsidy.toStringAsFixed(0)} 元/班 · 记单时可改',
                                 style: const TextStyle(fontSize: 12, color: kIosSecondary)),
                             trailing: const Icon(CupertinoIcons.chevron_right,
                                 size: 16, color: kIosSecondary),
@@ -324,7 +324,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ? (item.unitSeconds?.round().toString() ?? '')
                 : mode == PayMode.perPiece
                     ? (item.unitPrice?.toString() ?? '')
-                    : (item.hourlyRate?.toString() ?? ''));
+                    : mode == PayMode.perHour
+                        ? (item.hourlyRate?.toString() ?? '')
+                        : (item.dayRate?.toString() ?? ''));
     showCupertinoDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setDlg) => CupertinoAlertDialog(
@@ -340,6 +342,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 PayMode.perSecond: const Text('按秒'),
                 PayMode.perPiece: const Text('按件'),
                 PayMode.perHour: const Text('按小时'),
+                PayMode.perDay: const Text('按天'),
               },
               onValueChanged: (m) => setDlg(() => mode = m ?? PayMode.perSecond),
             ),
@@ -351,7 +354,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   ? '单件耗时（秒）'
                   : mode == PayMode.perPiece
                       ? '单价（元/件）'
-                      : '时薪（元/小时）',
+                      : mode == PayMode.perHour
+                          ? '时薪（元/小时）'
+                          : '日薪（元/天）',
             ),
           ],
         ),
@@ -375,6 +380,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 unitSeconds: mode == PayMode.perSecond ? pv : null,
                 unitPrice: mode == PayMode.perPiece ? pv : null,
                 hourlyRate: mode == PayMode.perHour ? pv : null,
+                dayRate: mode == PayMode.perDay ? pv : null,
               );
               if (item == null) {
                 await AppDb.insertModelLib(m);

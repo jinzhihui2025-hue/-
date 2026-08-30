@@ -1,10 +1,11 @@
 // 数据模型：设置 / 班次规则 / 件型库 / 计件单 / 明细行
-enum PayMode { perSecond, perPiece, perHour }
+enum PayMode { perSecond, perPiece, perHour, perDay }
 
 PayMode payModeFromName(String? name) {
   switch (name) {
     case 'per_piece': return PayMode.perPiece;
     case 'per_hour': return PayMode.perHour;
+    case 'per_day': return PayMode.perDay;
   }
   return PayMode.perSecond;
 }
@@ -13,12 +14,14 @@ String payModeName(PayMode m) => switch (m) {
   PayMode.perSecond => 'per_second',
   PayMode.perPiece => 'per_piece',
   PayMode.perHour => 'per_hour',
+  PayMode.perDay => 'per_day',
 };
 
 String payModeLabel(PayMode m) => switch (m) {
   PayMode.perSecond => '按秒',
   PayMode.perPiece => '按件',
   PayMode.perHour => '按小时',
+  PayMode.perDay => '按天',
 };
 
 class AppSettings {
@@ -55,13 +58,15 @@ class ModelLibItem {
   final double? unitSeconds;
   final double? unitPrice;
   final double? hourlyRate;
+  final double? dayRate;
   ModelLibItem(
       {this.id,
       required this.name,
       this.mode = 'per_second',
       this.unitSeconds,
       this.unitPrice,
-      this.hourlyRate});
+      this.hourlyRate,
+      this.dayRate});
   factory ModelLibItem.fromMap(Map<String, Object?> m) => ModelLibItem(
         id: m['id'] as int?,
         name: (m['name'] as String?) ?? '',
@@ -69,6 +74,7 @@ class ModelLibItem {
         unitSeconds: (m['unit_seconds'] as num?)?.toDouble(),
         unitPrice: (m['unit_price'] as num?)?.toDouble(),
         hourlyRate: (m['hourly_rate'] as num?)?.toDouble(),
+        dayRate: (m['day_rate'] as num?)?.toDouble(),
       );
   Map<String, Object?> toMap() => {
         'name': name,
@@ -76,6 +82,7 @@ class ModelLibItem {
         'unit_seconds': unitSeconds,
         'unit_price': unitPrice,
         'hourly_rate': hourlyRate,
+        'day_rate': dayRate,
       };
   String get desc {
     switch (payModeFromName(mode)) {
@@ -85,6 +92,8 @@ class ModelLibItem {
         return '按件 · ${unitPrice ?? 0}元/件';
       case PayMode.perHour:
         return '按小时 · ${hourlyRate ?? 0}元/时';
+      case PayMode.perDay:
+        return '按天 · ${dayRate ?? 0}元/天';
     }
   }
 }
@@ -137,6 +146,8 @@ class WorkOrderLine {
   double? unitPrice;
   double? hourlyRate;
   double? hours;
+  double? dayRate;
+  double? days;
   double quantity;
   double lineTotal;
   WorkOrderLine(
@@ -148,6 +159,8 @@ class WorkOrderLine {
       this.unitPrice,
       this.hourlyRate,
       this.hours,
+      this.dayRate,
+      this.days,
       this.quantity = 0,
       this.lineTotal = 0});
   factory WorkOrderLine.fromMap(Map<String, Object?> m) => WorkOrderLine(
@@ -159,6 +172,8 @@ class WorkOrderLine {
         unitPrice: (m['unit_price'] as num?)?.toDouble(),
         hourlyRate: (m['hourly_rate'] as num?)?.toDouble(),
         hours: (m['hours'] as num?)?.toDouble(),
+        dayRate: (m['day_rate'] as num?)?.toDouble(),
+        days: (m['days'] as num?)?.toDouble(),
         quantity: (m['quantity'] as num?)?.toDouble() ?? 0,
         lineTotal: (m['line_total'] as num?)?.toDouble() ?? 0,
       );
@@ -170,6 +185,8 @@ class WorkOrderLine {
         'unit_price': unitPrice,
         'hourly_rate': hourlyRate,
         'hours': hours,
+        'day_rate': dayRate,
+        'days': days,
         'quantity': quantity,
         'line_total': lineTotal,
       };

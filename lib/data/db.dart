@@ -10,21 +10,27 @@ class AppDb {
   static Future<Database> _open() async {
     final dir = await getDatabasesPath();
     final path = join(dir, 'miaoxin.db');
-    return openDatabase(path, version: 1, onCreate: (db, v) async {
+    return openDatabase(path, version: 2, onCreate: (db, v) async {
       await db.execute(
           'CREATE TABLE settings(id INTEGER PRIMARY KEY, rate_per_second REAL, default_mode TEXT)');
       await db.execute(
           'CREATE TABLE shift_rule(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, multiplier REAL, default_subsidy REAL)');
       await db.execute(
-          'CREATE TABLE model_lib(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, mode TEXT, unit_seconds REAL, unit_price REAL, hourly_rate REAL)');
+          'CREATE TABLE model_lib(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, mode TEXT, unit_seconds REAL, unit_price REAL, hourly_rate REAL, day_rate REAL)');
       await db.execute(
           'CREATE TABLE work_order(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, machine TEXT, shift_rule_id INTEGER, subsidy REAL, base_total REAL, total_amount REAL, created_at INTEGER)');
       await db.execute(
-          'CREATE TABLE work_order_line(id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, model TEXT, mode TEXT, unit_seconds REAL, unit_price REAL, hourly_rate REAL, hours REAL, quantity REAL, line_total REAL)');
+          'CREATE TABLE work_order_line(id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, model TEXT, mode TEXT, unit_seconds REAL, unit_price REAL, hourly_rate REAL, hours REAL, day_rate REAL, days REAL, quantity REAL, line_total REAL)');
       await db.insert(
           'settings', {'id': 1, 'rate_per_second': 0.0035, 'default_mode': 'per_second'});
       await db.insert('shift_rule', {'name': '白班', 'multiplier': 1.0, 'default_subsidy': 0});
       await db.insert('shift_rule', {'name': '夜班', 'multiplier': 1.2, 'default_subsidy': 20});
+    }, onUpgrade: (db, oldV, newV) async {
+      if (oldV < 2) {
+        await db.execute('ALTER TABLE work_order_line ADD COLUMN day_rate REAL');
+        await db.execute('ALTER TABLE work_order_line ADD COLUMN days REAL');
+        await db.execute('ALTER TABLE model_lib ADD COLUMN day_rate REAL');
+      }
     });
   }
 
