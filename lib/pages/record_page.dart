@@ -52,7 +52,6 @@ class _RecordPageState extends State<RecordPage> {
   AppSettings _settings = AppSettings();
   double _subsidy = 0;
   final List<_LineEdit> _lines = [];
-  static final Map<int, double> _lastSubsidy = {};
 
   bool get _isEdit => widget.editOrder != null;
 
@@ -93,10 +92,8 @@ class _RecordPageState extends State<RecordPage> {
           ..addAll((widget.editLines ?? []).map((l) => _LineEdit.fromLine(l)));
       } else {
         _shift = _shifts.isNotEmpty ? _shifts.first : null;
-        if (_shift != null) {
-          _subsidy = _lastSubsidy[_shift!.id] ?? _shift!.defaultSubsidy;
-        }
-        _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
+        _subsidy = 0;
+        _subsidyCtrl.text = '';
         if (_lines.isEmpty) _lines.add(_LineEdit());
       }
     });
@@ -208,7 +205,6 @@ class _RecordPageState extends State<RecordPage> {
     } else {
       await AppDb.insertOrder(order, lines);
     }
-    _lastSubsidy[_shift!.id!] = _subsidy;
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -232,8 +228,7 @@ class _RecordPageState extends State<RecordPage> {
   void _selectShift(ShiftRule s) {
     setState(() {
       _shift = s;
-      _subsidy = _lastSubsidy[s.id] ?? s.defaultSubsidy;
-      _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
+      // 补助不自动带出，让工人自己填（每个人不一样）
     });
   }
 
@@ -375,7 +370,7 @@ class _RecordPageState extends State<RecordPage> {
                     runSpacing: 8,
                     children: _shifts
                         .map((s) => _chip(
-                              '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}%',
+                              s.name,
                               _shift?.id == s.id,
                               () => _selectShift(s),
                             ))
@@ -390,7 +385,7 @@ class _RecordPageState extends State<RecordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('补助（元/班）',
+                const Text('补助比例（%）· 自己填，每个工人不一样',
                     style: TextStyle(fontSize: 13, color: kIosSecondary)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -398,11 +393,6 @@ class _RecordPageState extends State<RecordPage> {
                   runSpacing: 8,
                   children: [
                     _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
-                    ..._shifts.map((s) => _chip(
-                          '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}%',
-                          _subsidy == s.defaultSubsidy && s.defaultSubsidy > 0,
-                          () => _selectSubsidy(s.defaultSubsidy),
-                        )),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -410,7 +400,7 @@ class _RecordPageState extends State<RecordPage> {
                   key: const ValueKey('subsidy'),
                   controller: _subsidyCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  placeholder: '补助比例（%），如夜班20，可改',
+                  placeholder: '如 20 = 每件工资加20%，不填为0',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   onChanged: (v) => setState(() => _subsidy = double.tryParse(v) ?? 0),
                 ),

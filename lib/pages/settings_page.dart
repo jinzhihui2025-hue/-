@@ -157,8 +157,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       ..._shifts.map((s) => CupertinoListTile(
                             title: Text('${s.name}',
                                 style: const TextStyle(fontSize: 16)),
-                            subtitle: Text('默认补助 ${s.defaultSubsidy.toStringAsFixed(0)}%（每件工资加这个比例）· 记单时可改',
-                                style: const TextStyle(fontSize: 12, color: kIosSecondary)),
+                            subtitle: const Text('点击编辑 · 补助由工人记单时自己填',
+                                style: TextStyle(fontSize: 12, color: kIosSecondary)),
                             trailing: const Icon(CupertinoIcons.chevron_right,
                                 size: 16, color: kIosSecondary),
                             onTap: () => _editShift(s),
@@ -263,7 +263,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _editShift(ShiftRule? rule) async {
     final nameCtrl = TextEditingController(text: rule?.name ?? '');
-    final subCtrl = TextEditingController(text: (rule?.defaultSubsidy ?? 0).toStringAsFixed(0));
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
@@ -272,11 +271,6 @@ class _SettingsPageState extends State<SettingsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CupertinoTextField(controller: nameCtrl, placeholder: '班次名（如 夜班）'),
-            const SizedBox(height: 8),
-            CupertinoTextField(
-                controller: subCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                placeholder: '补助比例%（如 20 = 每件工资加20%）'),
           ],
         ),
         actions: [
@@ -289,14 +283,12 @@ class _SettingsPageState extends State<SettingsPage> {
             child: const Text('保存'),
             onPressed: () async {
               Navigator.pop(ctx);
-              final sub = double.tryParse(subCtrl.text) ?? 0;
               final name = nameCtrl.text.trim();
               if (name.isEmpty) return;
               if (rule == null) {
-                await AppDb.insertShiftRule(ShiftRule(name: name, defaultSubsidy: sub));
+                await AppDb.insertShiftRule(ShiftRule(name: name));
               } else {
-                await AppDb.updateShiftRule(ShiftRule(
-                    id: rule.id, name: name, defaultSubsidy: sub));
+                await AppDb.updateShiftRule(ShiftRule(id: rule.id, name: name));
               }
               _load();
             },
