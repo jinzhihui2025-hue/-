@@ -57,6 +57,7 @@ class _RecordPageState extends State<RecordPage> {
   ShiftRule? _shift;
   AppSettings _settings = AppSettings();
   double _subsidy = 0;
+  bool _noSubsidy = false; // 是否真的点了"无补助"
   final List<_LineEdit> _lines = [];
 
   bool get _isEdit => widget.editOrder != null;
@@ -99,6 +100,7 @@ class _RecordPageState extends State<RecordPage> {
       } else {
         _shift = _shifts.isNotEmpty ? _shifts.first : null;
         _subsidy = 0;
+        _noSubsidy = false;
         _subsidyCtrl.text = '';
         if (_lines.isEmpty) _lines.add(_LineEdit());
       }
@@ -245,6 +247,7 @@ class _RecordPageState extends State<RecordPage> {
   void _selectSubsidy(double v) {
     setState(() {
       _subsidy = v;
+      _noSubsidy = v == 0;
       _subsidyCtrl.text = v > 0 ? v.toString() : '';
     });
   }
@@ -389,7 +392,7 @@ class _RecordPageState extends State<RecordPage> {
                             _shift?.id == s.id,
                             () => _selectShift(s),
                           )),
-                      _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
+                      _chip('无补助', _noSubsidy, () => _selectSubsidy(0)),
                     ],
                   ),
                 const SizedBox(height: 10),
@@ -399,7 +402,10 @@ class _RecordPageState extends State<RecordPage> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   placeholder: '补助比例（%）· 自己填，如 20 = 每件工资加20%',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  onChanged: (v) => setState(() => _subsidy = double.tryParse(v) ?? 0),
+                  onChanged: (v) => setState(() {
+                    _subsidy = double.tryParse(v) ?? 0;
+                    _noSubsidy = false;
+                  }),
                 ),
               ],
             ),
