@@ -44,12 +44,12 @@ double calcLineTotal(WorkOrderLine l, double ratePerSecond) {
   }
 }
 
-/// 订单：基础合计 + 最终金额（基础 × 倍率 + 补助）
+/// 订单：基础合计 + 最终金额（基础 × (1 + 补助百分比/100)）
 ({double base, double total}) calcOrderTotal(
-    List<WorkOrderLine> lines, double multiplier, double subsidy, double ratePerSecond) {
+    List<WorkOrderLine> lines, double subsidyPercent, double ratePerSecond) {
   var base = 0.0;
   for (final l in lines) {
     base += calcLineTotal(l, ratePerSecond);
   }
-  return (base: base, total: base * multiplier + subsidy);
+  return (base: base, total: base * (1 + subsidyPercent / 100));
 }

@@ -225,7 +225,7 @@ class _HistoryPageState extends State<HistoryPage> {
           backgroundColor: CupertinoColors.white,
           title: Text('${o.machine} · ${shiftName[o.shiftRuleId] ?? "班次"}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-          subtitle: Text('补助 ￥${o.subsidy.toStringAsFixed(2)} · 基础 ￥${o.baseTotal.toStringAsFixed(2)}',
+          subtitle: Text('补助${o.subsidy.toStringAsFixed(0)}% · 基础 ￥${o.baseTotal.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 12, color: kIosSecondary)),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,

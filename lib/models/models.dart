@@ -38,17 +38,15 @@ class AppSettings {
 class ShiftRule {
   final int? id;
   final String name;
-  final double multiplier;
-  final double defaultSubsidy;
-  ShiftRule({this.id, required this.name, this.multiplier = 1.0, this.defaultSubsidy = 0});
+  final double defaultSubsidy; // 补助比例（%），如夜班 20 = 每件工资加 20%
+  ShiftRule({this.id, required this.name, this.defaultSubsidy = 0});
   factory ShiftRule.fromMap(Map<String, Object?> m) => ShiftRule(
         id: m['id'] as int?,
         name: (m['name'] as String?) ?? '',
-        multiplier: (m['multiplier'] as num?)?.toDouble() ?? 1.0,
         defaultSubsidy: (m['default_subsidy'] as num?)?.toDouble() ?? 0,
       );
   Map<String, Object?> toMap() =>
-      {'name': name, 'multiplier': multiplier, 'default_subsidy': defaultSubsidy};
+      {'name': name, 'default_subsidy': defaultSubsidy};
 }
 
 class ModelLibItem {

@@ -155,9 +155,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                     children: [
                       ..._shifts.map((s) => CupertinoListTile(
-                            title: Text('${s.name}（倍率×${s.multiplier}）',
+                            title: Text('${s.name}',
                                 style: const TextStyle(fontSize: 16)),
-                            subtitle: Text('默认补助 ${s.defaultSubsidy.toStringAsFixed(0)} 元/班 · 记单时可改',
+                            subtitle: Text('默认补助 ${s.defaultSubsidy.toStringAsFixed(0)}%（每件工资加这个比例）· 记单时可改',
                                 style: const TextStyle(fontSize: 12, color: kIosSecondary)),
                             trailing: const Icon(CupertinoIcons.chevron_right,
                                 size: 16, color: kIosSecondary),
@@ -263,7 +263,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _editShift(ShiftRule? rule) async {
     final nameCtrl = TextEditingController(text: rule?.name ?? '');
-    final mulCtrl = TextEditingController(text: (rule?.multiplier ?? 1.0).toString());
     final subCtrl = TextEditingController(text: (rule?.defaultSubsidy ?? 0).toStringAsFixed(0));
     showCupertinoDialog(
       context: context,
@@ -275,14 +274,9 @@ class _SettingsPageState extends State<SettingsPage> {
             CupertinoTextField(controller: nameCtrl, placeholder: '班次名（如 夜班）'),
             const SizedBox(height: 8),
             CupertinoTextField(
-                controller: mulCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                placeholder: '倍率（如 1.2）'),
-            const SizedBox(height: 8),
-            CupertinoTextField(
                 controller: subCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                placeholder: '默认补助（元/班）'),
+                placeholder: '补助比例%（如 20 = 每件工资加20%）'),
           ],
         ),
         actions: [
@@ -295,16 +289,14 @@ class _SettingsPageState extends State<SettingsPage> {
             child: const Text('保存'),
             onPressed: () async {
               Navigator.pop(ctx);
-              final mul = double.tryParse(mulCtrl.text) ?? 1.0;
               final sub = double.tryParse(subCtrl.text) ?? 0;
               final name = nameCtrl.text.trim();
               if (name.isEmpty) return;
               if (rule == null) {
-                await AppDb.insertShiftRule(
-                    ShiftRule(name: name, multiplier: mul, defaultSubsidy: sub));
+                await AppDb.insertShiftRule(ShiftRule(name: name, defaultSubsidy: sub));
               } else {
                 await AppDb.updateShiftRule(ShiftRule(
-                    id: rule.id, name: name, multiplier: mul, defaultSubsidy: sub));
+                    id: rule.id, name: name, defaultSubsidy: sub));
               }
               _load();
             },

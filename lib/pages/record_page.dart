@@ -155,7 +155,7 @@ class _RecordPageState extends State<RecordPage> {
       final l = _toLine(e);
       if (l != null) lines.add(l);
     }
-    return calcOrderTotal(lines, _shift!.multiplier, _subsidy, _settings.ratePerSecond);
+    return calcOrderTotal(lines, _subsidy, _settings.ratePerSecond);
   }
 
   void _snack(String msg) {
@@ -192,7 +192,7 @@ class _RecordPageState extends State<RecordPage> {
       _snack('请至少填写一行有效明细（件型、耗时/单价、件数）');
       return;
     }
-    final p = calcOrderTotal(lines, _shift!.multiplier, _subsidy, _settings.ratePerSecond);
+    final p = calcOrderTotal(lines, _subsidy, _settings.ratePerSecond);
     final order = WorkOrder(
       id: widget.editOrder?.id,
       date: DateFormat('yyyy-MM-dd').format(_date),
@@ -375,7 +375,7 @@ class _RecordPageState extends State<RecordPage> {
                     runSpacing: 8,
                     children: _shifts
                         .map((s) => _chip(
-                              '${s.name}（×${s.multiplier}）',
+                              '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}%',
                               _shift?.id == s.id,
                               () => _selectShift(s),
                             ))
@@ -399,7 +399,7 @@ class _RecordPageState extends State<RecordPage> {
                   children: [
                     _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
                     ..._shifts.map((s) => _chip(
-                          '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}元',
+                          '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}%',
                           _subsidy == s.defaultSubsidy && s.defaultSubsidy > 0,
                           () => _selectSubsidy(s.defaultSubsidy),
                         )),
@@ -410,7 +410,7 @@ class _RecordPageState extends State<RecordPage> {
                   key: const ValueKey('subsidy'),
                   controller: _subsidyCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  placeholder: '也可以直接填金额，每天可不同',
+                  placeholder: '补助比例（%），如夜班20，可改',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   onChanged: (v) => setState(() => _subsidy = double.tryParse(v) ?? 0),
                 ),
@@ -624,7 +624,7 @@ class _RecordPageState extends State<RecordPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('基础 ￥${p.base.toStringAsFixed(2)} ×${_shift?.multiplier ?? 1} + 补助 ￥${_subsidy.toStringAsFixed(2)}',
+                  Text('基础 ￥${p.base.toStringAsFixed(2)} × (1+补助${_subsidy.toStringAsFixed(0)}%) = ￥${p.total.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 12, color: kIosSecondary)),
                   Text('本单金额 ￥${p.total.toStringAsFixed(2)}',
                       style: const TextStyle(

@@ -48,7 +48,7 @@ Future<void> _seed() async {
   final l1 = [
     WorkOrderLine(model: 'A型', mode: 'per_second', unitSeconds: 1124, quantity: 30, lineTotal: 0.0035 * 1124 * 30),
   ];
-  final p1 = calcOrderTotal(l1, 1.0, 0, 0.0035);
+  final p1 = calcOrderTotal(l1, 0, 0.0035);
   await AppDb.insertOrder(
       WorkOrder(date: _d(now), machine: '3号机', shiftRuleId: day.id!, subsidy: 0, baseTotal: p1.base, totalAmount: p1.total),
       l1);
@@ -57,7 +57,7 @@ Future<void> _seed() async {
     WorkOrderLine(model: 'A型', mode: 'per_second', unitSeconds: 1124, quantity: 30, lineTotal: 0.0035 * 1124 * 30),
     WorkOrderLine(model: 'B型', mode: 'per_second', unitSeconds: 1500, quantity: 20, lineTotal: 0.0035 * 1500 * 20),
   ];
-  final p2 = calcOrderTotal(l2, 1.2, 20, 0.0035);
+  final p2 = calcOrderTotal(l2, 20, 0.0035);
   await AppDb.insertOrder(
       WorkOrder(date: _d(now), machine: '3号机', shiftRuleId: night.id!, subsidy: 20, baseTotal: p2.base, totalAmount: p2.total),
       l2);
@@ -68,7 +68,7 @@ Future<void> _seed() async {
     final l = [
       WorkOrderLine(model: 'A型', mode: 'per_second', unitSeconds: 1124, quantity: qty, lineTotal: 0.0035 * 1124 * qty),
     ];
-    final p = calcOrderTotal(l, 1.0, i.isEven ? 10 : 0, 0.0035);
+    final p = calcOrderTotal(l, i.isEven ? 10 : 0, 0.0035);
     await AppDb.insertOrder(
         WorkOrder(date: _d(dt), machine: i.isEven ? '5号机' : '3号机',
             shiftRuleId: (i.isEven ? night : day).id!, subsidy: i.isEven ? 10 : 0,
@@ -79,7 +79,7 @@ Future<void> _seed() async {
   final l3 = [
     WorkOrderLine(model: '临时件', mode: 'per_piece', unitPrice: 3.9, quantity: 50, lineTotal: 3.9 * 50),
   ];
-  final p3 = calcOrderTotal(l3, 1.0, 0, 0.0035);
+  final p3 = calcOrderTotal(l3, 0, 0.0035);
   await AppDb.insertOrder(
       WorkOrder(date: _d(y), machine: '5号机', shiftRuleId: day.id!, subsidy: 0, baseTotal: p3.base, totalAmount: p3.total),
       l3);

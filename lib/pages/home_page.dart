@@ -179,9 +179,9 @@ class _HomePageState extends State<HomePage> {
       return '${l.model} ${l.quantity.toStringAsFixed(0)}件';
     }).join('，');
     return CupertinoListTile(
-      title: Text('${o.machine} · ${shiftName[o.shiftRuleId] ?? "班次"} ×${_fmtMul(d, o)}',
+      title: Text('${o.machine} · ${shiftName[o.shiftRuleId] ?? "班次"}',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-      subtitle: Text('补助 ￥${o.subsidy.toStringAsFixed(2)} · 基础 ￥${o.baseTotal.toStringAsFixed(2)}\n$linesDesc',
+      subtitle: Text('补助${o.subsidy.toStringAsFixed(0)}% · 基础 ￥${o.baseTotal.toStringAsFixed(2)}\n$linesDesc',
           style: const TextStyle(fontSize: 12, color: kIosSecondary)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -196,10 +196,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _fmtMul(_HomeData d, WorkOrder o) {
-    for (final s in d.shifts) {
-      if (s.id == o.shiftRuleId) return s.multiplier.toString();
-    }
-    return '1';
-  }
 }

@@ -15,7 +15,7 @@ void main() {
     expect(formatSeconds(4724), '1:18:44');
   });
 
-  test('订单计算: 基础×倍率+补助', () {
+  test('订单计算: 基础×(1+补助%)', () {
     final lines = [
       WorkOrderLine(
           model: 'A型',
@@ -24,8 +24,14 @@ void main() {
           quantity: 30,
           lineTotal: 0.0035 * 1124 * 30),
     ];
-    final r = calcOrderTotal(lines, 1.2, 20, 0.0035);
+    // 夜班补助 20%：118.02 × 1.2 = 141.62
+    final r = calcOrderTotal(lines, 20, 0.0035);
     expect(r.base, closeTo(118.02, 0.01));
-    expect(r.total, closeTo(161.62, 0.01));
+    expect(r.total, closeTo(141.62, 0.01));
+  });
+
+  test('按秒工价: 1080秒 × 0.0035 × 1.2 = 4.536/件', () {
+    expect(0.0035 * 1080, closeTo(3.78, 0.001));
+    expect(0.0035 * 1080 * 1.2, closeTo(4.536, 0.001));
   });
 }
