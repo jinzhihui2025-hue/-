@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/db.dart';
 import '../data/export.dart';
 import '../models/models.dart';
@@ -61,6 +63,41 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           CupertinoDialogAction(
             child: const Text('好的'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _contact(String name, String id, String url) async {
+    await Clipboard.setData(ClipboardData(text: id));
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text('$name：$id'),
+        content: const Text('账号已复制，可粘贴到对应App添加好友；或点下方按钮直接打开。'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('复制账号'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: id));
+              Navigator.pop(ctx);
+              _snack('已复制 $id');
+            },
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text('打开$name'),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final ok = await launchUrl(Uri.parse(url),
+                  mode: LaunchMode.externalApplication);
+              if (!ok) _snack('未安装$name或无法打开');
+            },
+          ),
+          CupertinoDialogAction(
+            child: const Text('取消'),
             onPressed: () => Navigator.pop(ctx),
           ),
         ],
@@ -189,9 +226,33 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                   ),
+                  const IosSectionHeader('联系客服'),
+                  CupertinoListSection.insetGrouped(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                    children: [
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.chat_bubble, color: kIosGreen),
+                        title: const Text('微信', style: TextStyle(fontSize: 16)),
+                        subtitle: const Text('TFYin666',
+                            style: TextStyle(fontSize: 12, color: kIosSecondary)),
+                        trailing: const Icon(CupertinoIcons.chevron_right,
+                            size: 16, color: kIosSecondary),
+                        onTap: () => _contact('微信', 'TFYin666', 'weixin://'),
+                      ),
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.chat_bubble_2, color: kIosBlue),
+                        title: const Text('QQ', style: TextStyle(fontSize: 16)),
+                        subtitle: const Text('582522101',
+                            style: TextStyle(fontSize: 12, color: kIosSecondary)),
+                        trailing: const Icon(CupertinoIcons.chevron_right,
+                            size: 16, color: kIosSecondary),
+                        onTap: () => _contact('QQ', '582522101', 'mqq://'),
+                      ),
+                    ],
+                  ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
-                    child: Text('秒薪计件 v1.0.0 · 免费本地版\n数据保存在手机本地，无账号无云端。',
+                    child: Text('计件助手 v1.0.0 · 免费本地版\n数据保存在手机本地，无账号无云端。',
                         style: TextStyle(fontSize: 12, color: kIosSecondary)),
                   ),
                 ],
