@@ -14,7 +14,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.47.2'
           channel: stable
           cache: true
 
@@ -29,11 +29,11 @@ jobs:
           cd build/ios/iphoneos
           mkdir -p Payload
           cp -r Runner.app Payload/
-          zip -r miaoxin-unsigned.ipa Payload/
+          zip -r jijian-unsigned.ipa Payload/
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: miaoxin-unsigned-ipa
-          path: build/ios/iphoneos/miaoxin-unsigned.ipa
+          name: jijian-unsigned-ipa
+          path: build/ios/iphoneos/jijian-unsigned.ipa
           retention-days: 30

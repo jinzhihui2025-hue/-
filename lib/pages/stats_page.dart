@@ -14,12 +14,12 @@ class _StatsPageState extends State<StatsPage> {
   bool _loading = true;
   ({double today, double month, double all}) _sum = (today: 0, month: 0, all: 0);
   Map<String, ({double total, double sub})> _daily = {};
-  Map<String, ({double total, double sub})> _dailyRange = {};
   Map<String, double> _byMachine = {};
   Map<String, double> _byShift = {};
   Map<String, double> _byMode = {};
   int _chart = 0;
   int _pieDim = 0;
+  int _range = 0; // 0=最近7天 1=最近30天 2=本月
 
   @override
   void initState() {
@@ -31,12 +31,8 @@ class _StatsPageState extends State<StatsPage> {
     setState(() => _loading = true);
     final now = DateTime.now();
     final shifts = await AppDb.getShiftRules();
-    final mStart = DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month, 1));
-    final mEnd = DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month + 1, 0));
-    final rStart = DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 29)));
-    final rEnd = DateFormat('yyyy-MM-dd').format(now);
-    final monthOrders = await AppDb.ordersInRange(mStart, mEnd);
-    final rangeOrders = await AppDb.ordersInRange(rStart, rEnd);
+    final bounds = _rangeBounds(now);
+    final orders = await AppDb.ordersInRange(bounds.$1, bounds.$2);
     final sum = await AppDb.summaryTotals();
     final byMachine = await AppDb.groupByMachine();
     final byShift = await AppDb.groupByShift(shifts);
@@ -44,14 +40,33 @@ class _StatsPageState extends State<StatsPage> {
     if (!mounted) return;
     setState(() {
       _sum = sum;
-      _daily = _agg(monthOrders);
-      _dailyRange = _agg(rangeOrders);
+      _daily = _agg(orders);
       _byMachine = byMachine;
       _byShift = byShift;
       _byMode = byMode;
       _loading = false;
     });
   }
+
+  (String, String) _rangeBounds(DateTime now) {
+    switch (_range) {
+      case 0:
+        return (DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 6))),
+            DateFormat('yyyy-MM-dd').format(now));
+      case 1:
+        return (DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 29))),
+            DateFormat('yyyy-MM-dd').format(now));
+      default:
+        return (DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month, 1)),
+            DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month + 1, 0)));
+    }
+  }
+
+  String get _rangeLabel => switch (_range) {
+        0 => '最近7天',
+        1 => '最近30天',
+        _ => '本月',
+      };
 
   Map<String, ({double total, double sub})> _agg(List<dynamic> orders) {
     final m = <String, ({double total, double sub})>{};
@@ -95,6 +110,19 @@ class _StatsPageState extends State<StatsPage> {
                           },
                           onValueChanged: (v) => setState(() => _chart = v ?? 0),
                         ),
+                        const SizedBox(height: 10),
+                        CupertinoSlidingSegmentedControl<int>(
+                          groupValue: _range,
+                          children: const {
+                            0: Text('7天'),
+                            1: Text('30天'),
+                            2: Text('本月'),
+                          },
+                          onValueChanged: (v) {
+                            setState(() => _range = v ?? 0);
+                            _load();
+                          },
+                        ),
                         const SizedBox(height: 14),
                         SizedBox(height: 250, child: _chartWidget()),
                         if (_chart == 2) ...[
@@ -112,9 +140,9 @@ class _StatsPageState extends State<StatsPage> {
                         const SizedBox(height: 10),
                         Text(
                           _chart == 0
-                              ? '本月每天收入（深蓝=基础，浅蓝=补助）'
+                              ? '$_rangeLabel每天收入（深蓝=基础，浅蓝=补助）'
                               : _chart == 1
-                                  ? '近30天收入趋势'
+                                  ? '$_rangeLabel收入趋势'
                                   : '按${_pieDim == 0 ? "机器" : _pieDim == 1 ? "班次" : "计价方式"}统计',
                           style: const TextStyle(fontSize: 12, color: kIosSecondary),
                         ),
@@ -164,26 +192,43 @@ class _StatsPageState extends State<StatsPage> {
     }
   }
 
+  List<(String date, DateTime dt)> _rangeDays(DateTime now) {
+    final bounds = _rangeBounds(now);
+    final start = DateTime.parse(bounds.$1);
+    final end = DateTime.parse(bounds.$2);
+    final out = <(String, DateTime)>[];
+    for (var i = 0; i <= end.difference(start).inDays; i++) {
+      final d = start.add(Duration(days: i));
+      out.add((DateFormat('yyyy-MM-dd').format(d), d));
+    }
+    return out;
+  }
+
+  int get _labelInterval {
+    final n = _rangeDays(DateTime.now()).length;
+    return n > 15 ? 5 : (n > 8 ? 2 : 1);
+  }
+
   Widget _barChart() {
-    final now = DateTime.now();
-    final days = DateTime(now.year, now.month + 1, 0).day;
-    final prefix = DateFormat('yyyy-MM').format(now);
+    final days = _rangeDays(DateTime.now());
     double maxY = 10;
     final groups = <BarChartGroupData>[];
-    for (var d = 1; d <= days; d++) {
-      final ds = '$prefix-${d.toString().padLeft(2, '0')}';
+    final labels = <String>[];
+    for (var i = 0; i < days.length; i++) {
+      final ds = days[i].$1;
       final v = _daily[ds];
       final base = v == null ? 0.0 : v.total - v.sub;
       final sub = v?.sub ?? 0.0;
       if (base + sub > maxY) maxY = base + sub;
+      labels.add(DateFormat('M/d').format(days[i].$2));
       groups.add(BarChartGroupData(
-        x: d,
+        x: i,
         barRods: [
           BarChartRodData(
             fromY: 0,
             toY: base + sub,
             color: const Color(0xFF007AFF),
-            width: 12,
+            width: days.length > 20 ? 6 : 14,
             rodStackItems: [
               BarChartRodStackItem(0, base, const Color(0xFF007AFF)),
               if (sub > 0)
@@ -193,16 +238,18 @@ class _StatsPageState extends State<StatsPage> {
         ],
       ));
     }
+    final interval = _labelInterval;
     return BarChart(BarChartData(
       maxY: maxY * 1.15,
       barGroups: groups,
       barTouchData: BarTouchData(
         touchTooltipData: BarTouchTooltipData(
           getTooltipColor: (_) => const Color(0xE6000000),
-          getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-            '${group.x}日  ￥${rod.toY.toStringAsFixed(2)}',
-            const TextStyle(color: CupertinoColors.white),
-          ),
+          getTooltipItem: (group, gi, rod, ri) {
+            final label = group.x >= 0 && group.x < labels.length ? labels[group.x] : '';
+            return BarTooltipItem('$label  ￥${rod.toY.toStringAsFixed(2)}',
+                const TextStyle(color: CupertinoColors.white));
+          },
         ),
       ),
       titlesData: FlTitlesData(
@@ -219,9 +266,15 @@ class _StatsPageState extends State<StatsPage> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 5,
-            getTitlesWidget: (v, meta) => Text(v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: kIosSecondary)),
+            reservedSize: 26,
+            getTitlesWidget: (v, meta) {
+              final i = v.toInt();
+              if (i < 0 || i >= labels.length || i % interval != 0) {
+                return const SizedBox.shrink();
+              }
+              return Text(labels[i],
+                  style: const TextStyle(fontSize: 9, color: kIosSecondary));
+            },
           ),
         ),
       ),
@@ -231,13 +284,15 @@ class _StatsPageState extends State<StatsPage> {
   }
 
   Widget _lineChart() {
-    final now = DateTime.now();
+    final days = _rangeDays(DateTime.now());
     final spots = <FlSpot>[];
-    for (var i = 29; i >= 0; i--) {
-      final d = now.subtract(Duration(days: i));
-      final ds = DateFormat('yyyy-MM-dd').format(d);
-      spots.add(FlSpot((29 - i).toDouble(), _dailyRange[ds]?.total ?? 0));
+    final labels = <String>[];
+    for (var i = 0; i < days.length; i++) {
+      final v = _daily[days[i].$1]?.total ?? 0;
+      spots.add(FlSpot(i.toDouble(), v));
+      labels.add(DateFormat('M/d').format(days[i].$2));
     }
+    final interval = _labelInterval;
     return LineChart(LineChartData(
       lineBarsData: [
         LineChartBarData(
@@ -271,9 +326,15 @@ class _StatsPageState extends State<StatsPage> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 5,
-            getTitlesWidget: (v, meta) => Text('${(29 - v.toInt()).toString()}天前',
-                style: const TextStyle(fontSize: 9, color: kIosSecondary)),
+            reservedSize: 26,
+            getTitlesWidget: (v, meta) {
+              final i = v.toInt();
+              if (i < 0 || i >= labels.length || i % interval != 0) {
+                return const SizedBox.shrink();
+              }
+              return Text(labels[i],
+                  style: const TextStyle(fontSize: 9, color: kIosSecondary));
+            },
           ),
         ),
       ),
