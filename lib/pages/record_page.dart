@@ -16,7 +16,9 @@ class RecordPage extends StatefulWidget {
 class _LineEdit {
   String model = '';
   PayMode mode = PayMode.perSecond;
-  String durationText = '';
+  String durationText = ''; // 按秒：总耗时
+  String batchQtyText = ''; // 按秒：该批件数
+  String totalQtyText = ''; // 按秒：总件数
   String priceText = '';
   String hourlyText = '';
   String hoursText = '';
@@ -28,10 +30,11 @@ class _LineEdit {
     model = l.model;
     mode = payModeFromName(l.mode);
     if (mode == PayMode.perSecond) {
-      // 回显总耗时 = 每件秒数 × 件数
+      // 回显：每件耗时 + 该批1件 + 总件数
       final perPiece = l.unitSeconds ?? 0;
-      final cnt = l.quantity > 0 ? l.quantity : 1;
-      durationText = (perPiece * cnt).round().toString();
+      durationText = perPiece.round().toString();
+      batchQtyText = '1';
+      totalQtyText = l.quantity.toString();
     } else if (mode == PayMode.perPiece) {
       priceText = l.unitPrice?.toString() ?? '';
     } else if (mode == PayMode.perHour) {
@@ -106,16 +109,18 @@ class _RecordPageState extends State<RecordPage> {
     final qty = double.tryParse(e.qtyText) ?? 0;
     if (e.model.trim().isEmpty) return null;
     if (e.mode == PayMode.perSecond) {
-      // 总耗时（如 927 秒）÷ 件数（如 3 件）= 每件耗时 309 秒
+      // 总耗时 ÷ 该批件数 = 每件耗时；每件工价 × 总件数 = 本行
       final totalSec = parseDurationSeconds(e.durationText);
-      if (totalSec == null || totalSec <= 0 || qty <= 0) return null;
-      final perPiece = totalSec / qty;
+      final batchQty = double.tryParse(e.batchQtyText) ?? 0;
+      final totalQty = double.tryParse(e.totalQtyText) ?? 0;
+      if (totalSec == null || totalSec <= 0 || batchQty <= 0 || totalQty <= 0) return null;
+      final perPiece = totalSec / batchQty;
       return WorkOrderLine(
           model: e.model.trim(),
           mode: payModeName(e.mode),
           unitSeconds: perPiece,
-          quantity: qty,
-          lineTotal: _settings.ratePerSecond * totalSec);
+          quantity: totalQty,
+          lineTotal: _settings.ratePerSecond * perPiece * totalQty);
     } else if (e.mode == PayMode.perPiece) {
       final price = double.tryParse(e.priceText) ?? 0;
       if (price <= 0 || qty <= 0) return null;
@@ -470,36 +475,46 @@ class _RecordPageState extends State<RecordPage> {
                   child: CupertinoTextField(
                     key: ValueKey('dur_$index'),
                     keyboardType: TextInputType.number,
-                    placeholder: '总耗时：秒 或 分:秒（如927或15:27）',
+                    placeholder: '总耗时：如927或15:27',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.durationText = v),
                   ),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 90,
+                  width: 86,
                   child: CupertinoTextField(
-                    key: ValueKey('qty_$index'),
+                    key: ValueKey('batch_$index'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    placeholder: '件数',
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                    onChanged: (v) => setState(() => e.qtyText = v),
+                    placeholder: '该批件数',
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                    onChanged: (v) => setState(() => e.batchQtyText = v),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              key: ValueKey('totalqty_$index'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              placeholder: '这个型号总共干了多少件（如110）',
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              onChanged: (v) => setState(() => e.totalQtyText = v),
             ),
             if (durSec != null) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                    '总耗时 ${formatSeconds(durSec)}（${durSec}秒）· 每件工价 ¥${(_settings.ratePerSecond * durSec / (double.tryParse(e.qtyText) ?? 1)).toStringAsFixed(2)}',
+                    '每件 ${formatSeconds((durSec / (double.tryParse(e.batchQtyText) ?? 1)).round())}（${(durSec / (double.tryParse(e.batchQtyText) ?? 1)).round()}秒/件）· 每件工价 ¥${(_settings.ratePerSecond * durSec / (double.tryParse(e.batchQtyText) ?? 1)).toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 12, color: kIosBlue)),
               ),
-              if (double.tryParse(e.qtyText) != null && (double.tryParse(e.qtyText) ?? 0) > 0)
+              if (double.tryParse(e.totalQtyText) != null &&
+                  (double.tryParse(e.totalQtyText) ?? 0) > 0 &&
+                  (double.tryParse(e.batchQtyText) ?? 0) > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
-                    '${e.qtyText} 件 = 每件 ${formatSeconds((durSec / (double.tryParse(e.qtyText) ?? 1)).round())}（${(durSec / (double.tryParse(e.qtyText) ?? 1)).round()}秒/件）',
+                    '${e.totalQtyText} 件 × 每件工价 = ¥${(_settings.ratePerSecond * durSec / (double.tryParse(e.batchQtyText) ?? 1) * (double.tryParse(e.totalQtyText) ?? 0)).toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 12, color: kIosSecondary)),
                 ),
             ],
