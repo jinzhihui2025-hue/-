@@ -171,10 +171,13 @@ class _ReportPageState extends State<ReportPage> {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
               child: CupertinoSlidingSegmentedControl<int>(
                 groupValue: _mode,
                 children: const {
@@ -193,6 +196,7 @@ class _ReportPageState extends State<ReportPage> {
                   : (_mode == 0 ? _reportView() : _payrollView()),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -200,6 +204,7 @@ class _ReportPageState extends State<ReportPage> {
 
   Widget _reportView() {
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         IosGroup(
@@ -310,6 +315,7 @@ class _ReportPageState extends State<ReportPage> {
     final deduct = double.tryParse(_deductCtrl.text) ?? 0;
     final payable = baseSalary + pieceTotal + bonus - deduct;
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         IosGroup(

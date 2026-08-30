@@ -279,12 +279,16 @@ class _RecordPageState extends State<RecordPage> {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 16),
-                children: [
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  children: [
                   _basicGroup(),
                   const IosSectionHeader('明细（一单可多种件）'),
                   for (var i = 0; i < _lines.length; i++) _lineCard(i, _lines[i]),
@@ -309,7 +313,8 @@ class _RecordPageState extends State<RecordPage> {
               ),
             ),
             _previewBar(p),
-          ],
+            ],
+          ),
         ),
       ),
     );

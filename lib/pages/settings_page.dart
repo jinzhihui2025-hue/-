@@ -115,7 +115,11 @@ class _SettingsPageState extends State<SettingsPage> {
         top: false,
         child: _loading
             ? const Center(child: CupertinoActivityIndicator())
-            : ListView(
+            : GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                child: ListView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   const IosSectionHeader('工资设置'),
@@ -256,6 +260,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         style: TextStyle(fontSize: 12, color: kIosSecondary)),
                   ),
                 ],
+                ),
               ),
       ),
     );
