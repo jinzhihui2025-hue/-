@@ -10,7 +10,7 @@ class AppDb {
   static Future<Database> _open() async {
     final dir = await getDatabasesPath();
     final path = join(dir, 'miaoxin.db');
-    return openDatabase(path, version: 2, onCreate: (db, v) async {
+    return openDatabase(path, version: 3, onCreate: (db, v) async {
       await db.execute(
           'CREATE TABLE settings(id INTEGER PRIMARY KEY, rate_per_second REAL, default_mode TEXT)');
       await db.execute(
@@ -25,11 +25,17 @@ class AppDb {
           'settings', {'id': 1, 'rate_per_second': 0.0035, 'default_mode': 'per_second'});
       await db.insert('shift_rule', {'name': '白班', 'multiplier': 1.0, 'default_subsidy': 0});
       await db.insert('shift_rule', {'name': '夜班', 'multiplier': 1.2, 'default_subsidy': 20});
+      await db.execute(
+          'CREATE TABLE payroll(month TEXT PRIMARY KEY, base_salary REAL, bonus REAL, deduction REAL)');
     }, onUpgrade: (db, oldV, newV) async {
       if (oldV < 2) {
         await db.execute('ALTER TABLE work_order_line ADD COLUMN day_rate REAL');
         await db.execute('ALTER TABLE work_order_line ADD COLUMN days REAL');
         await db.execute('ALTER TABLE model_lib ADD COLUMN day_rate REAL');
+      }
+      if (oldV < 3) {
+        await db.execute(
+            'CREATE TABLE payroll(month TEXT PRIMARY KEY, base_salary REAL, bonus REAL, deduction REAL)');
       }
     });
   }
@@ -130,6 +136,28 @@ class AppDb {
     final rows = await d
         .query('work_order', columns: ['machine'], distinct: true, orderBy: 'machine ASC');
     return rows.map((r) => (r['machine'] as String?) ?? '').where((s) => s.isNotEmpty).toList();
+  }
+
+  // ---------- 工资单（底薪/奖金/扣款，按月存）----------
+  static Future<({double base, double bonus, double deduction})> getPayroll(String month) async {
+    final d = await db;
+    final rows = await d.query('payroll', where: 'month = ?', whereArgs: [month]);
+    if (rows.isEmpty) return (base: 0.0, bonus: 0.0, deduction: 0.0);
+    final r = rows.first;
+    return (
+      base: (r['base_salary'] as num?)?.toDouble() ?? 0,
+      bonus: (r['bonus'] as num?)?.toDouble() ?? 0,
+      deduction: (r['deduction'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  static Future<void> savePayroll(
+      String month, double baseSalary, double bonus, double deduction) async {
+    final d = await db;
+    await d.insert(
+        'payroll',
+        {'month': month, 'base_salary': baseSalary, 'bonus': bonus, 'deduction': deduction},
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // ---------- 聚合（图表用）----------
