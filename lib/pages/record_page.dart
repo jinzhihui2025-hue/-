@@ -229,31 +229,33 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  Future<void> _pickShift() async {
-    if (_shifts.isEmpty) return;
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Container(
-        height: 240,
-        color: CupertinoColors.white,
-        child: CupertinoPicker(
-          itemExtent: 44,
-          onSelectedItemChanged: (i) {
-            final s = _shifts[i];
-            setState(() {
-              _shift = s;
-              _subsidy = _lastSubsidy[s.id] ?? s.defaultSubsidy;
-              _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
-            });
-          },
-          children: _shifts
-              .map((s) => Center(
-                    child: Text('${s.name}（倍率×${s.multiplier}）默认补助${s.defaultSubsidy.toStringAsFixed(0)}元/班',
-                        style: const TextStyle(fontSize: 16)),
-                  ))
-              .toList(),
-        ),
-      ),
+  void _selectShift(ShiftRule s) {
+    setState(() {
+      _shift = s;
+      _subsidy = _lastSubsidy[s.id] ?? s.defaultSubsidy;
+      _subsidyCtrl.text = _subsidy > 0 ? _subsidy.toString() : '';
+    });
+  }
+
+  void _selectSubsidy(double v) {
+    setState(() {
+      _subsidy = v;
+      _subsidyCtrl.text = v > 0 ? v.toString() : '';
+    });
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) {
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      borderRadius: BorderRadius.circular(9),
+      color: selected ? kIosBlue : const Color(0xFFEAF2FF),
+      pressedOpacity: 0.7,
+      onPressed: onTap,
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected ? CupertinoColors.white : kIosBlue)),
     );
   }
 
@@ -356,13 +358,31 @@ class _RecordPageState extends State<RecordPage> {
             ),
           ),
           const IosDivider(),
-          _rowButton(
-            icon: CupertinoIcons.moon,
-            label: '班次',
-            value: _shift == null
-                ? '请选择'
-                : '${_shift!.name}（倍率×${_shift!.multiplier}）',
-            onTap: _pickShift,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('班次（点击直接切换）',
+                    style: TextStyle(fontSize: 13, color: kIosSecondary)),
+                const SizedBox(height: 8),
+                if (_shifts.isEmpty)
+                  const Text('请先在设置里添加班次',
+                      style: TextStyle(fontSize: 13, color: kIosRed))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _shifts
+                        .map((s) => _chip(
+                              '${s.name}（×${s.multiplier}）',
+                              _shift?.id == s.id,
+                              () => _selectShift(s),
+                            ))
+                        .toList(),
+                  ),
+              ],
+            ),
           ),
           const IosDivider(),
           Padding(
@@ -370,14 +390,27 @@ class _RecordPageState extends State<RecordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('补助（元/班，与倍率分开算）',
+                const Text('补助（元/班）',
                     style: TextStyle(fontSize: 13, color: kIosSecondary)),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _chip('无补助', _subsidy == 0, () => _selectSubsidy(0)),
+                    ..._shifts.map((s) => _chip(
+                          '${s.name}补助${s.defaultSubsidy.toStringAsFixed(0)}元',
+                          _subsidy == s.defaultSubsidy && s.defaultSubsidy > 0,
+                          () => _selectSubsidy(s.defaultSubsidy),
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 CupertinoTextField(
                   key: const ValueKey('subsidy'),
                   controller: _subsidyCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  placeholder: '每天可不同，自动记住上次',
+                  placeholder: '也可以直接填金额，每天可不同',
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   onChanged: (v) => setState(() => _subsidy = double.tryParse(v) ?? 0),
                 ),
@@ -460,7 +493,7 @@ class _RecordPageState extends State<RecordPage> {
                   child: CupertinoTextField(
                     key: ValueKey('dur_$index'),
                     keyboardType: TextInputType.number,
-                    placeholder: '耗时：秒 或 分:秒',
+                    placeholder: '单件耗时 秒（如1080）或 分:秒',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.durationText = v),
                   ),
@@ -471,7 +504,7 @@ class _RecordPageState extends State<RecordPage> {
                   child: CupertinoTextField(
                     key: ValueKey('qty_$index'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    placeholder: '件数',
+                    placeholder: '总件数',
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     onChanged: (v) => setState(() => e.qtyText = v),
                   ),
