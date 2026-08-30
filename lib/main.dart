@@ -4,6 +4,7 @@ import 'pages/home_page.dart';
 import 'pages/stats_page.dart';
 import 'pages/history_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/report_page.dart';
 import 'widgets/ios_ui.dart';
 
 void main() => runApp(const MiaoxinApp());
@@ -55,6 +56,7 @@ class _MainShellState extends State<MainShell> {
     final pages = <Widget>[
       const HomePage(),
       const StatsPage(),
+      const ReportPage(),
       const HistoryPage(),
       const SettingsPage(),
     ];
@@ -69,6 +71,7 @@ class _MainShellState extends State<MainShell> {
         items: const [
           BottomNavigationBarItem(icon: Icon(CupertinoIcons.house_fill), label: '首页'),
           BottomNavigationBarItem(icon: Icon(CupertinoIcons.chart_bar_fill), label: '统计'),
+          BottomNavigationBarItem(icon: Icon(CupertinoIcons.doc_text), label: '报表'),
           BottomNavigationBarItem(icon: Icon(CupertinoIcons.calendar_today), label: '历史'),
           BottomNavigationBarItem(icon: Icon(CupertinoIcons.gear_solid), label: '设置'),
         ],
