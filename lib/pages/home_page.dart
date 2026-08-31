@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import '../data/db.dart';
 import '../data/calc.dart';
 import '../models/models.dart';
@@ -31,11 +33,60 @@ class _HomeData {
 
 class _HomePageState extends State<HomePage> {
   late Future<_HomeData> _future;
+  String _quote = '';
+  String _quoteFrom = '';
+
+  static const _localQuotes = [
+    '努力不一定成功，但放弃一定失败。',
+    '今天的努力，是明天的底气。',
+    '每一件完成的作品，都是对自己的奖赏。',
+    '流水不争先，争的是滔滔不绝。',
+    '认真做好的每一件小事，都在为将来铺路。',
+    '加油，你比昨天更接近目标了！',
+    '少一点抱怨，多一点行动，收入是干出来的。',
+    '把每一件简单的事做好，就是不简单。',
+    '财富是积累出来的，别急，一步一步来。',
+    '今天的汗水，是明天口袋里的踏实。',
+  ];
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 6) return '夜深了，注意休息';
+    if (h < 9) return '早上好，开工大吉';
+    if (h < 12) return '上午好，加油干';
+    if (h < 14) return '中午好，歇口气再干';
+    if (h < 18) return '下午好，继续加油';
+    return '晚上好，辛苦了';
+  }
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _loadQuote();
+  }
+
+  Future<void> _loadQuote() async {
+    String q = _localQuotes[DateTime.now().millisecondsSinceEpoch % _localQuotes.length];
+    String from = '';
+    try {
+      final resp = await http
+          .get(Uri.parse('https://v1.hitokoto.cn/?c=i&encode=json'))
+          .timeout(const Duration(seconds: 6));
+      if (resp.statusCode == 200) {
+        final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+        q = ((j['hitokoto'] as String?) ?? '').trim();
+        if (q.isEmpty) q = _localQuotes[DateTime.now().second % _localQuotes.length];
+        from = (j['from'] as String?) ?? '';
+      }
+    } catch (_) {
+      // 网络不可用时用本地语录
+    }
+    if (!mounted) return;
+    setState(() {
+      _quote = q;
+      _quoteFrom = from;
+    });
   }
 
   Future<_HomeData> _load() async {
@@ -55,7 +106,10 @@ class _HomePageState extends State<HomePage> {
     return _HomeData(settings: settings, shifts: shifts, orders: orders, lines: lines, todayQty: qty);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() => _future = _load());
+    _loadQuote();
+  }
 
   Future<void> _goRecord({WorkOrder? order, List<WorkOrderLine>? lines}) async {
     await Navigator.of(context).push(CupertinoPageRoute(
@@ -91,6 +145,10 @@ class _HomePageState extends State<HomePage> {
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
+                _greetingCard(d),
+                const SizedBox(height: 6),
+                _quoteCard(),
+                const SizedBox(height: 6),
                 _summaryGroup(d),
                 const IosSectionHeader('今日计件单'),
                 if (d.orders.isEmpty)
@@ -119,6 +177,68 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _greetingCard(_HomeData d) {
+    return IosGroup(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(CupertinoIcons.sparkles, size: 20, color: kIosBlue),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(_greeting,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600, color: kIosLabel)),
+          ),
+          Text(DateFormat('yyyy年M月d日 EEEE').format(DateTime.now()),
+              style: const TextStyle(fontSize: 12, color: kIosSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _quoteCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEAF2FF), Color(0xFFF6FAFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(CupertinoIcons.quote_bubble_fill,
+                  size: 16, color: kIosBlue),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _quote.isEmpty ? '加载中…' : '“$_quote”',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF3A4B66)),
+                ),
+              ),
+            ],
+          ),
+          if (_quoteFrom.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text('—— $_quoteFrom',
+                    style: const TextStyle(fontSize: 11, color: kIosSecondary)),
+              ),
+            ),
+        ],
       ),
     );
   }

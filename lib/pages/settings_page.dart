@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/db.dart';
 import '../data/export.dart';
@@ -226,6 +227,57 @@ class _SettingsPageState extends State<SettingsPage> {
                         onTap: () async {
                           final path = await exportExcel();
                           if (path != null) await shareReport(path);
+                        },
+                      ),
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.arrow_up_doc, color: kIosBlue),
+                        title: const Text('从 Excel 导入',
+                            style: TextStyle(fontSize: 16)),
+                        subtitle: const Text('选 xlsx 文件，按表头识别，导入后所有报表都有数据',
+                            style: TextStyle(fontSize: 12, color: kIosSecondary)),
+                        trailing: const Icon(CupertinoIcons.chevron_right,
+                            size: 16, color: kIosSecondary),
+                        onTap: () async {
+                          const group = XTypeGroup(label: 'Excel', extensions: ['xlsx']);
+                          final xf = await openFile(acceptedTypeGroups: const [group]);
+                          if (xf == null) return;
+                          final r = await importExcel(xf.path);
+                          _snack('导入完成：${r.orders} 张单，${r.lines} 行明细');
+                          _load();
+                        },
+                      ),
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.archivebox, color: kIosBlue),
+                        title: const Text('备份全部数据',
+                            style: TextStyle(fontSize: 16)),
+                        subtitle: const Text('导出数据库备份文件，换包/恢复用',
+                            style: TextStyle(fontSize: 12, color: kIosSecondary)),
+                        trailing: const Icon(CupertinoIcons.chevron_right,
+                            size: 16, color: kIosSecondary),
+                        onTap: () async {
+                          final path = await backupDb();
+                          if (path == null) {
+                            _snack('备份失败');
+                            return;
+                          }
+                          await shareReport(path);
+                        },
+                      ),
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.tray_arrow_down, color: kIosBlue),
+                        title: const Text('从备份恢复',
+                            style: TextStyle(fontSize: 16)),
+                        subtitle: const Text('选备份的 .db 文件，恢复后请重启App',
+                            style: TextStyle(fontSize: 12, color: kIosSecondary)),
+                        trailing: const Icon(CupertinoIcons.chevron_right,
+                            size: 16, color: kIosSecondary),
+                        onTap: () async {
+                          const group = XTypeGroup(label: '备份', extensions: ['db']);
+                          final xf = await openFile(acceptedTypeGroups: const [group]);
+                          if (xf == null) return;
+                          final r = await restoreDb(xf.path);
+                          _snack(r.msg);
+                          _load();
                         },
                       ),
                     ],

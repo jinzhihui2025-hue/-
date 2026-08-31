@@ -7,6 +7,17 @@ class AppDb {
   static Database? _db;
   static Future<Database> get db async => _db ??= await _open();
 
+  static Future<String> dbPath() async {
+    final dir = await getDatabasesPath();
+    return join(dir, 'miaoxin.db');
+  }
+
+  static Future<void> close() async {
+    final d = _db;
+    _db = null;
+    if (d != null) await d.close();
+  }
+
   static Future<Database> _open() async {
     final dir = await getDatabasesPath();
     final path = join(dir, 'miaoxin.db');
