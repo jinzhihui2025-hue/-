@@ -20,12 +20,14 @@ class _HomeData {
   final List<WorkOrder> orders;
   final Map<int, List<WorkOrderLine>> lines;
   final double todayQty;
+  final double yesterdayTotal;
   _HomeData({
     required this.settings,
     required this.shifts,
     required this.orders,
     required this.lines,
     required this.todayQty,
+    required this.yesterdayTotal,
   });
   double get todayTotal => orders.fold(0.0, (s, o) => s + o.totalAmount);
   double get todaySub => orders.fold(0.0, (s, o) => s + (o.totalAmount - o.baseTotal));
@@ -110,7 +112,10 @@ class _HomePageState extends State<HomePage> {
     final settings = await AppDb.getSettings();
     final shifts = await AppDb.getShiftRules();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final yesterday =
+        DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 1)));
     final orders = await AppDb.ordersByDate(today);
+    final yOrders = await AppDb.ordersByDate(yesterday);
     final lines = <int, List<WorkOrderLine>>{};
     double qty = 0;
     for (final o in orders) {
@@ -120,7 +125,14 @@ class _HomePageState extends State<HomePage> {
         qty += l.quantity;
       }
     }
-    return _HomeData(settings: settings, shifts: shifts, orders: orders, lines: lines, todayQty: qty);
+    final yTotal = yOrders.fold(0.0, (s, o) => s + o.totalAmount);
+    return _HomeData(
+        settings: settings,
+        shifts: shifts,
+        orders: orders,
+        lines: lines,
+        todayQty: qty,
+        yesterdayTotal: yTotal);
   }
 
   void _refresh() {
@@ -283,6 +295,39 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _summaryGroup(_HomeData d) {
+    final diff = d.todayTotal - d.yesterdayTotal;
+    final beat = diff > 0 && d.yesterdayTotal > 0;
+    const green = Color(0xFF28B561);
+    const orange = Color(0xFFFF9500);
+    const blue = Color(0xFF007AFF);
+    const gold = Color(0xFFE8A33D);
+    final amountColor = beat ? green : blue;
+
+    String cmpText;
+    Color cmpColor;
+    IconData cmpIcon;
+    if (d.todayTotal <= 0 && d.yesterdayTotal <= 0) {
+      cmpText = '今天还没有收入，点下方记一笔';
+      cmpColor = kIosSecondary;
+      cmpIcon = CupertinoIcons.hourglass;
+    } else if (d.yesterdayTotal <= 0) {
+      cmpText = '昨天没有记录，今天开了个好头！';
+      cmpColor = gold;
+      cmpIcon = CupertinoIcons.sparkles;
+    } else if (diff > 0) {
+      cmpText = '比昨天多赚 ￥${diff.toStringAsFixed(2)}，太棒了，继续保持！';
+      cmpColor = green;
+      cmpIcon = CupertinoIcons.arrow_up_right;
+    } else if (diff < 0) {
+      cmpText = '比昨天少赚 ￥${(-diff).toStringAsFixed(2)}，别灰心，明天加油！';
+      cmpColor = orange;
+      cmpIcon = CupertinoIcons.arrow_down_right;
+    } else {
+      cmpText = '和昨天持平，稳住就是胜利！';
+      cmpColor = blue;
+      cmpIcon = CupertinoIcons.minus;
+    }
+
     return IosGroup(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,21 +336,32 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 13, color: kIosSecondary)),
           const SizedBox(height: 2),
           Text('￥${d.todayTotal.toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontSize: 38, fontWeight: FontWeight.w600, color: kIosLabel)),
-          const SizedBox(height: 14),
+              style: TextStyle(
+                  fontSize: 38, fontWeight: FontWeight.w600, color: amountColor)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(cmpIcon, size: 14, color: cmpColor),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(cmpText,
+                    style: TextStyle(fontSize: 12, color: cmpColor)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           const IosDivider(),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                  child: _mini('今日件数', d.todayQty.toStringAsFixed(0))),
+              Expanded(child: _mini('今日件数', d.todayQty.toStringAsFixed(0))),
               const IosVDivider(),
               Expanded(
                   child: _mini('今日补助', '￥${d.todaySub.toStringAsFixed(2)}')),
               const IosVDivider(),
               Expanded(
-                  child: _mini('秒单价', '${d.settings.ratePerSecond.toStringAsFixed(4)}')),
+                  child:
+                      _mini('秒单价', '${d.settings.ratePerSecond.toStringAsFixed(4)}')),
             ],
           ),
         ],

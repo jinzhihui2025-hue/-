@@ -17,6 +17,7 @@ class _HistoryPageState extends State<HistoryPage> {
   Map<String, List<WorkOrder>> _orders = {};
   Map<String, double> _dayTotal = {};
   List<ShiftRule> _shifts = [];
+  Set<String> _recordDays = {}; // 打破历史最高收入的日期
 
   @override
   void initState() {
@@ -35,11 +36,28 @@ class _HistoryPageState extends State<HistoryPage> {
       totals[o.date] = (totals[o.date] ?? 0) + o.totalAmount;
     }
     final shifts = await AppDb.getShiftRules();
+    // 计算破纪录日期：按时间顺序，收益超过此前最高即为破纪录
+    final allOrders = await AppDb.ordersInRange('2020-01-01', '2099-12-31');
+    final allTotals = <String, double>{};
+    for (final o in allOrders) {
+      allTotals[o.date] = (allTotals[o.date] ?? 0) + o.totalAmount;
+    }
+    final dates = allTotals.keys.toList()..sort();
+    double maxSoFar = 0;
+    final rec = <String>{};
+    for (final d in dates) {
+      final v = allTotals[d]!;
+      if (v > maxSoFar) {
+        if (maxSoFar > 0) rec.add(d); // 只有超过之前的最高才算破纪录
+        maxSoFar = v;
+      }
+    }
     if (!mounted) return;
     setState(() {
       _orders = byDate;
       _dayTotal = totals;
       _shifts = shifts;
+      _recordDays = rec;
     });
   }
 
@@ -80,8 +98,17 @@ class _HistoryPageState extends State<HistoryPage> {
                             fontSize: 15, fontWeight: FontWeight.w600, color: kIosLabel)),
                   ),
                   const SizedBox(width: 8),
-                  Text('当日合计 ￥${(_dayTotal[DateFormat('yyyy-MM-dd').format(_selected)] ?? 0).toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kIosBlue)),
+                  Text(
+                    _recordDays.contains(DateFormat('yyyy-MM-dd').format(_selected))
+                        ? '🏆 当日合计 ￥${(_dayTotal[DateFormat('yyyy-MM-dd').format(_selected)] ?? 0).toStringAsFixed(2)} · 破纪录！'
+                        : '当日合计 ￥${(_dayTotal[DateFormat('yyyy-MM-dd').format(_selected)] ?? 0).toStringAsFixed(2)}',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _recordDays.contains(DateFormat('yyyy-MM-dd').format(_selected))
+                            ? const Color(0xFFE8A33D)
+                            : kIosBlue),
+                  ),
                 ],
               ),
             ),
@@ -164,6 +191,7 @@ class _HistoryPageState extends State<HistoryPage> {
       final v = _dayTotal[ds] ?? 0;
       final isSel = DateFormat('yyyy-MM-dd').format(_selected) == ds;
       final isToday = DateFormat('yyyy-MM-dd').format(DateTime.now()) == ds;
+      final isRecord = _recordDays.contains(ds);
       Color? fill;
       if (isSel) {
         fill = kIosBlue;
@@ -174,26 +202,39 @@ class _HistoryPageState extends State<HistoryPage> {
         GestureDetector(
           onTap: () => setState(() => _selected = date),
           child: Center(
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: fill,
-                border: isToday && !isSel
-                    ? Border.all(color: kIosBlue, width: 1.5)
-                    : null,
-              ),
-              child: Center(
-                child: Text(
-                  '$d',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSel || v > 0 ? FontWeight.w600 : FontWeight.w400,
-                    color: isSel ? CupertinoColors.white : kIosLabel,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: fill,
+                    border: isToday && !isSel
+                        ? Border.all(color: kIosBlue, width: 1.5)
+                        : isRecord
+                            ? Border.all(color: const Color(0xFFE8A33D), width: 1.5)
+                            : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$d',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSel || v > 0 ? FontWeight.w600 : FontWeight.w400,
+                        color: isSel ? CupertinoColors.white : kIosLabel,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                if (isRecord)
+                  const Positioned(
+                    top: -3,
+                    right: -4,
+                    child: Text('🏆', style: TextStyle(fontSize: 10)),
+                  ),
+              ],
             ),
           ),
         ),
