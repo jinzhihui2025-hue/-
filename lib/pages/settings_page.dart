@@ -116,10 +116,7 @@ class _SettingsPageState extends State<SettingsPage> {
         top: false,
         child: _loading
             ? const Center(child: CupertinoActivityIndicator())
-            : GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                child: ListView(
+            : ListView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
@@ -214,8 +211,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: const Icon(CupertinoIcons.chevron_right,
                             size: 16, color: kIosSecondary),
                         onTap: () async {
-                          final path = await exportExcel();
-                          _snack(path == null ? '导出失败' : '已生成报表');
+                          try {
+                            final path = await exportExcel();
+                            _snack(path == null ? '导出失败' : '已生成报表');
+                          } catch (e) {
+                            _snack('导出失败：$e');
+                          }
                         },
                       ),
                       CupertinoListTile(
@@ -225,8 +226,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: const Icon(CupertinoIcons.chevron_right,
                             size: 16, color: kIosSecondary),
                         onTap: () async {
-                          final path = await exportExcel();
-                          if (path != null) await shareReport(path);
+                          try {
+                            final path = await exportExcel();
+                            if (path != null) await shareReport(path);
+                          } catch (e) {
+                            _snack('导出失败：$e');
+                          }
                         },
                       ),
                       CupertinoListTile(
@@ -238,12 +243,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: const Icon(CupertinoIcons.chevron_right,
                             size: 16, color: kIosSecondary),
                         onTap: () async {
-                          const group = XTypeGroup(label: 'Excel', extensions: ['xlsx']);
-                          final xf = await openFile(acceptedTypeGroups: const [group]);
-                          if (xf == null) return;
-                          final r = await importExcel(xf.path);
-                          _snack('导入完成：${r.orders} 张单，${r.lines} 行明细');
-                          _load();
+                          try {
+                            const group = XTypeGroup(label: 'Excel', extensions: ['xlsx']);
+                            final xf = await openFile(acceptedTypeGroups: const [group]);
+                            if (xf == null) return;
+                            final r = await importExcel(xf.path);
+                            _snack('导入完成：${r.orders} 张单，${r.lines} 行明细');
+                            _load();
+                          } catch (e) {
+                            _snack('导入失败：$e');
+                          }
                         },
                       ),
                       CupertinoListTile(
@@ -255,12 +264,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: const Icon(CupertinoIcons.chevron_right,
                             size: 16, color: kIosSecondary),
                         onTap: () async {
-                          final path = await backupDb();
-                          if (path == null) {
-                            _snack('备份失败');
-                            return;
+                          try {
+                            final path = await backupDb();
+                            if (path == null) {
+                              _snack('备份失败');
+                              return;
+                            }
+                            await shareReport(path);
+                          } catch (e) {
+                            _snack('备份失败：$e');
                           }
-                          await shareReport(path);
                         },
                       ),
                       CupertinoListTile(
@@ -272,12 +285,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         trailing: const Icon(CupertinoIcons.chevron_right,
                             size: 16, color: kIosSecondary),
                         onTap: () async {
-                          const group = XTypeGroup(label: '备份', extensions: ['db']);
-                          final xf = await openFile(acceptedTypeGroups: const [group]);
-                          if (xf == null) return;
-                          final r = await restoreDb(xf.path);
-                          _snack(r.msg);
-                          _load();
+                          try {
+                            const group = XTypeGroup(label: '备份', extensions: ['db']);
+                            final xf = await openFile(acceptedTypeGroups: const [group]);
+                            if (xf == null) return;
+                            final r = await restoreDb(xf.path);
+                            _snack(r.msg);
+                            _load();
+                          } catch (e) {
+                            _snack('恢复失败：$e');
+                          }
                         },
                       ),
                     ],
@@ -312,7 +329,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         style: TextStyle(fontSize: 12, color: kIosSecondary)),
                   ),
                 ],
-                ),
               ),
       ),
     );

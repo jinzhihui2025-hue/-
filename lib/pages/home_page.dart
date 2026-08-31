@@ -37,26 +37,40 @@ class _HomePageState extends State<HomePage> {
   String _quoteFrom = '';
 
   static const _localQuotes = [
-    '努力不一定成功，但放弃一定失败。',
-    '今天的努力，是明天的底气。',
-    '每一件完成的作品，都是对自己的奖赏。',
-    '流水不争先，争的是滔滔不绝。',
-    '认真做好的每一件小事，都在为将来铺路。',
-    '加油，你比昨天更接近目标了！',
-    '少一点抱怨，多一点行动，收入是干出来的。',
-    '把每一件简单的事做好，就是不简单。',
-    '财富是积累出来的，别急，一步一步来。',
-    '今天的汗水，是明天口袋里的踏实。',
+    '好好休息，才有精力多赚钱。',
+    '身体是赚钱的本钱，该歇就歇。',
+    '今天好好干，明天更有钱。',
+    '赚钱重要，身体更重要，累了就歇会儿。',
+    '少熬夜，多赚钱，日子越过越好。',
+    '踏实干活，钱不会辜负你。',
+    '忙归忙，记得按时吃饭休息。',
+    '每一分钱都是汗水的回报，加油。',
+    '劳逸结合，才能细水长流地赚。',
+    '干得开心，赚得安心。',
+    '休息是为了走更远的路，赚更多的钱。',
+    '今天辛苦了，早点休息，明天继续加油。',
+    '心态好，身体好，钱包也会好。',
+    '努力的人运气不会差，今天也要加油呀。',
+    '赚钱的路很长，保重身体才能走到底。',
+    '日子是熬出来的，钱是干出来的，稳住。',
+    '不熬夜，不焦虑，稳稳当当地赚钱。',
+    '睡个好觉，明天满血复活去赚钱。',
+    '少想多做，钱包会越来越鼓。',
+    '把活干漂亮，钱自然就来了。',
   ];
+
+  static const _badWords = ['辛苦', '艰难', '辛酸', '累死', '残酷', '悲'];
 
   String get _greeting {
     final h = DateTime.now().hour;
-    if (h < 6) return '夜深了，注意休息';
-    if (h < 9) return '早上好，开工大吉';
-    if (h < 12) return '上午好，加油干';
-    if (h < 14) return '中午好，歇口气再干';
+    if (h < 5) return '凌晨好，早点休息';
+    if (h < 8) return '早上好，开工大吉';
+    if (h < 11) return '上午好，加油干';
+    if (h < 13) return '中午好，吃饱再干';
+    if (h < 14) return '午休一下，下午更有劲';
     if (h < 18) return '下午好，继续加油';
-    return '晚上好，辛苦了';
+    if (h < 23) return '晚上好，辛苦了';
+    return '夜深了，早点睡，明天再战';
   }
 
   @override
@@ -75,9 +89,12 @@ class _HomePageState extends State<HomePage> {
           .timeout(const Duration(seconds: 6));
       if (resp.statusCode == 200) {
         final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-        q = ((j['hitokoto'] as String?) ?? '').trim();
-        if (q.isEmpty) q = _localQuotes[DateTime.now().second % _localQuotes.length];
-        from = (j['from'] as String?) ?? '';
+        final t = ((j['hitokoto'] as String?) ?? '').trim();
+        final hasBad = _badWords.any((w) => t.contains(w));
+        if (t.isNotEmpty && !hasBad) {
+          q = t;
+          from = (j['from'] as String?) ?? '';
+        }
       }
     } catch (_) {
       // 网络不可用时用本地语录
@@ -181,19 +198,40 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String get _greetingEmoji {
+    final h = DateTime.now().hour;
+    if (h < 5) return '🌙';
+    if (h < 8) return '🌅';
+    if (h < 11) return '☀️';
+    if (h < 13) return '🍚';
+    if (h < 14) return '😴';
+    if (h < 18) return '💪';
+    if (h < 23) return '🌆';
+    return '🌙';
+  }
+
   Widget _greetingCard(_HomeData d) {
-    return IosGroup(
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEAF2FF), Color(0xFFF8FBFF)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
-          const Icon(CupertinoIcons.sparkles, size: 20, color: kIosBlue),
+          Text(_greetingEmoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(_greeting,
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600, color: kIosLabel)),
+                    fontSize: 16, fontWeight: FontWeight.w700, color: kIosLabel)),
           ),
-          Text(DateFormat('yyyy年M月d日 EEEE').format(DateTime.now()),
+          Text(DateFormat('M月d日 EEEE').format(DateTime.now()),
               style: const TextStyle(fontSize: 12, color: kIosSecondary)),
         ],
       ),
@@ -206,11 +244,12 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFEAF2FF), Color(0xFFF6FAFF)],
+          colors: [Color(0xFFFFF7E8), Color(0xFFFFFBF2)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF3E3C8), width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,12 +258,12 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(CupertinoIcons.quote_bubble_fill,
-                  size: 16, color: kIosBlue),
+                  size: 16, color: Color(0xFFE8A33D)),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   _quote.isEmpty ? '加载中…' : '“$_quote”',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF3A4B66)),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF5A4632)),
                 ),
               ),
             ],
