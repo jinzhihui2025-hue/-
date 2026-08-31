@@ -1,5 +1,6 @@
 // Excel 导出 + 分享 + 导入
 import 'dart:io';
+import 'dart:ui' show Rect;
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -88,8 +89,12 @@ Future<String?> exportExcel() async {
   return file.path;
 }
 
-Future<void> shareReport(String path) async {
-  await Share.shareXFiles([XFile(path)], text: '计件助手报表');
+Future<void> shareReport(String path, Rect sharePositionOrigin) async {
+  await Share.shareXFiles(
+    [XFile(path)],
+    text: '计件助手报表',
+    sharePositionOrigin: sharePositionOrigin,
+  );
 }
 
 // ---------- 导入 ----------

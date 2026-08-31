@@ -71,6 +71,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Rect _shareOrigin() {
+    final size = MediaQuery.of(context).size;
+    return Rect.fromLTWH(0, 0, size.width, size.height);
+  }
+
   Future<void> _contact(String name, String id, String url) async {
     await Clipboard.setData(ClipboardData(text: id));
     showCupertinoDialog(
@@ -228,7 +233,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         onTap: () async {
                           try {
                             final path = await exportExcel();
-                            if (path != null) await shareReport(path);
+                            if (path != null) await shareReport(path, _shareOrigin());
                           } catch (e) {
                             _snack('导出失败：$e');
                           }
@@ -270,7 +275,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               _snack('备份失败');
                               return;
                             }
-                            await shareReport(path);
+                            await shareReport(path, _shareOrigin());
                           } catch (e) {
                             _snack('备份失败：$e');
                           }
